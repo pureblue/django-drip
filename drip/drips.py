@@ -1,10 +1,77 @@
-from django.conf import settings
 from datetime import datetime
 
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.template import Context, Template
-from drip.models import SentDrip
 from django.core.mail import EmailMultiAlternatives
+from django.utils.importlib import import_module
+from django.utils.html import strip_tags
+
+from drip.models import SentDrip
+
+
+def get_email_instance(*args, **kwargs):
+    path = getattr(settings, 'DRIP_EMAIL_CLASS', 'drip.drips.DripEmail')
+    mod_name, klass_name = path.rsplit('.', 1)
+    mod = import_module(mod_name)
+    klass = getattr(mod, klass_name)
+    return klass(*args, **kwargs)
+
+
+class DripEmail(object):
+
+    def __init__(self, drip_base, user):
+        self.drip_base = drip_base
+        self.user = user
+        self._from_email = None
+        self._context = None
+        self._subject = None
+        self._body = None
+        self._plain = None
+        self._email = None
+
+    @property
+    def from_email(self):
+        if not self._from_email:
+            self._from_email = getattr(settings,
+                                       'DRIP_FROM_EMAIL',
+                                        settings.EMAIL_HOST_USER)
+        return self._from_email
+
+    @property
+    def context(self):
+        if not self._context:
+            self._context = Context({'user': self.user})
+        return self._context
+
+    @property
+    def subject(self):
+        if not self._subject:
+            self._subject = Template(self.drip_base.subject_template).render(self.context)
+        return self._subject
+
+    @property
+    def body(self):
+        if not self._body:
+            self._body = Template(self.drip_base.body_template).render(self.context)
+        return self._body
+
+    @property
+    def plain(self):
+        if not self._plain:
+            self._plain = strip_tags(self.body)
+        return self._plain
+
+    @property
+    def email(self):
+        if not self._email:
+            self._email = EmailMultiAlternatives(
+                self.subject, self.plain, self.from_email, [self.user.email])
+
+            # check if there are html tags in the rendered template
+            if len(self.plain) != len(self.body):
+                self._email.attach_alternative(self.body, 'text/html')
+        return self._email
 
 
 class DripBase(object):
@@ -106,27 +173,14 @@ class DripBase(object):
         """
         Creates Email instance and optionally sends to user.
         """
-        from django.utils.html import strip_tags
-
-        from_email = getattr(settings, 'DRIP_FROM_EMAIL', settings.EMAIL_HOST_USER)
-
-        context = Context({'user': user})
-        subject = Template(self.subject_template).render(context)
-        body = Template(self.body_template).render(context)
-        plain = strip_tags(body)
-
-        email = EmailMultiAlternatives(subject, plain, from_email, [user.email])
-
-        # check if there are html tags in the rendered template
-        if len(plain) != len(body):
-            email.attach_alternative(body, 'text/html')
+        email = get_email_instance(self, user).email
 
         if send:
             sd = SentDrip.objects.create(
                 drip=self.drip_model,
                 user=user,
-                subject=subject,
-                body=body
+                subject=email.subject,
+                body=email.body
             )
             email.send()
 
