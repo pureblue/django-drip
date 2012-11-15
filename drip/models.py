@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
+from django.contrib.contenttypes.models import ContentType
 
 # just using this to parse, but totally insane package naming...
 # https://bitbucket.org/schinckel/django-timedelta-field/
@@ -21,9 +22,18 @@ class Drip(models.Model):
 
     enabled = models.BooleanField(default=False)
 
+    trigger_model = models.ForeignKey(ContentType, blank=True, null=True,
+        help_text='Trigger sending drip on creation of this type of content.')
+
     subject_template = models.TextField(null=True, blank=True)
     body_html_template = models.TextField(null=True, blank=True,
         help_text='You will have settings and user in the context.')
+
+    def save(self, *args, **kwargs):
+        from drip.signals import connect_signals
+        if self.trigger_model:
+            connect_signals(self.trigger_model)
+        super(Drip, self).save(*args, **kwargs)
 
     @property
     def drip(self):
@@ -74,6 +84,7 @@ LOOKUP_TYPES = (
     ('istartswith', 'ends with (case insensitive)'),
     ('iendswith', 'ends with (case insensitive)'),
 )
+
 
 class QuerySetRule(models.Model):
     date = models.DateTimeField(auto_now_add=True)

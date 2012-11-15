@@ -5,5 +5,5 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         from drip.models import Drip
 
-        for drip in Drip.objects.filter(enabled=True):
+        for drip in Drip.objects.filter(enabled=True, trigger_model__isnull=True):
             drip.drip.run()
