@@ -23,7 +23,6 @@ class DripEmail(object):
     def __init__(self, drip_base, user):
         self.drip_base = drip_base
         self.user = user
-        self._from_email = None
         self._context = None
         self._subject = None
         self._body = None
@@ -32,11 +31,11 @@ class DripEmail(object):
 
     @property
     def from_email(self):
-        if not self._from_email:
-            self._from_email = getattr(settings,
-                                       'DRIP_FROM_EMAIL',
-                                        settings.EMAIL_HOST_USER)
-        return self._from_email
+        return self.drip_base.from_email
+
+    @property
+    def from_email_name(self):
+        return self.drip_base.from_email_name
 
     @property
     def context(self):
@@ -65,8 +64,13 @@ class DripEmail(object):
     @property
     def email(self):
         if not self._email:
+            if self.drip_base.from_email_name:
+                from_ = "%s <%s>" % (self.drip_base.from_email_name, self.drip_base.from_email)
+            else:
+                from_ = self.drip_base.from_email
+
             self._email = EmailMultiAlternatives(
-                self.subject, self.plain, self.from_email, [self.user.email])
+                self.subject, self.plain, from_, [self.user.email])
 
             # check if there are html tags in the rendered template
             if len(self.plain) != len(self.body):
@@ -85,12 +89,15 @@ class DripBase(object):
     name = None
     subject_template = None
     body_template = None
+    from_email = None
+    from_email_name = None
 
     def __init__(self, drip_model, *args, **kwargs):
         self.drip_model = drip_model
 
         self.name = kwargs.pop('name', self.name)
-
+        self.from_email = kwargs.pop('from_email', self.from_email)
+        self.from_email_name = kwargs.pop('from_email_name', self.from_email_name)
         self.subject_template = kwargs.pop('subject_template', self.subject_template)
         self.body_template = kwargs.pop('body_template', self.body_template)
 
@@ -143,7 +150,8 @@ class DripBase(object):
         try:
             return self._queryset
         except AttributeError:
-            self._queryset = self.apply_queryset_rules(self.queryset())
+            self._queryset = self.apply_queryset_rules(self.queryset())\
+                                 .distinct()
             return self._queryset
 
     def run(self):
@@ -173,12 +181,18 @@ class DripBase(object):
         """
         Creates Email instance and optionally sends to user.
         """
+
+        if not self.from_email:
+            self.from_email = getattr(settings, 'DRIP_FROM_EMAIL', settings.DEFAULT_FROM_EMAIL)
+
         email = get_email_instance(self, user).email
 
         if send:
             sd = SentDrip.objects.create(
                 drip=self.drip_model,
                 user=user,
+                from_email = self.from_email,
+                from_email_name = self.from_email_name,
                 subject=email.subject,
                 body=email.body
             )
