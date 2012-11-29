@@ -3,8 +3,9 @@ from datetime import datetime, timedelta
 from django.test import TestCase
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
-from django.core import mail
+from django.core import mail, management
 from django.conf import settings
+from django.contrib.contenttypes.models import ContentType
 
 from drip.models import Drip, SentDrip, QuerySetRule
 from drip.drips import DripBase, DripMessage
@@ -300,3 +301,38 @@ class CustomMessagesTest(TestCase):
         self.assertEquals(1, len(mail.outbox))
         email = mail.outbox.pop()
         self.assertIsInstance(email, mail.EmailMessage)
+
+
+class TriggeredDripTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create(username='customuser', email='custom@example.com')
+        user_ct = ContentType.objects.get_for_model(self.user)
+        self.model_drip = Drip.objects.create(
+            enabled=True,
+            name='A Custom Triggered Drip',
+            subject_template='New User Created',
+            body_html_template='<p>Site has a new user!</p>',
+            trigger_model=user_ct,
+        )
+        QuerySetRule.objects.create(
+            drip=self.model_drip,
+            field_name='id',
+            lookup_type='exact',
+            field_value=self.user.id,
+        )
+
+    def test_trigger_works(self):
+        User.objects.create(username='seconduser', email='secondsuer@abc.org')
+        self.assertEqual(1, len(mail.outbox))
+        email = mail.outbox.pop()
+        self.assertEqual(self.model_drip.subject_template, email.subject)
+
+    def test_trigger_disabled(self):
+        self.model_drip.enabled = False
+        self.model_drip.save()
+        User.objects.create(username='seconduser', email='secondsuer@abc.org')
+        self.assertEqual(0, len(mail.outbox))
+
+    def test_triggered_not_sent_by_send_drips(self):
+        management.call_command('send_drips')
+        self.assertEqual(0, len(mail.outbox))

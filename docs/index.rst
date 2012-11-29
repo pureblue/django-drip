@@ -148,6 +148,31 @@ all drips, simply specify that custom class as the "default" key value in the se
    }
 
 
+Drips Triggered by Model Creation
+---------------------------------
+
+Sending a Drip can be triggered by creation of a model instance, to do this set the "Trigger model" field of the Drip
+to the type of content it should be associated with. If a Drip has a non-empty "Trigger model", then the drip will
+be sent (to the users as restricted normally by the Drip's query set rules) when a model of that type is created.
+Note triggered drips are sent immediately when the model instance is created, sending is not deferred until the next
+time the send_drips management command is run. Other than that, triggered drips behave just like non-triggered drips.
+
+Sending of Drips triggered by model creation uses the Django ``post_save`` signal. In order to get the django-drip signal
+handler connected, the ``connect_signals`` function in ``drip.signals`` must be called. A good place to put a call to this
+function is in the base site ``urls.py`` file, since that will be loaded when a web request is received:
+
+.. code-block:: python
+
+   from drip.signals import connect_signals
+   connect_signals()
+
+Here is an example drip configured to be sent on creation of a new ``Training`` model instance.
+
+.. image:: images/drip-trigger-example.png
+   :width: 100 %
+   :alt: example showing trigger model set
+
+
 Development:
 ------------
 
