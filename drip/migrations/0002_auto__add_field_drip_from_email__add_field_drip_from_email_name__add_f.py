@@ -8,52 +8,39 @@ from django.db import models
 class Migration(SchemaMigration):
 
     def forwards(self, orm):
-        # Adding model 'Drip'
-        db.create_table('drip_drip', (
-            ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
-            ('date', self.gf('django.db.models.fields.DateTimeField')(auto_now_add=True, blank=True)),
-            ('lastchanged', self.gf('django.db.models.fields.DateTimeField')(auto_now=True, blank=True)),
-            ('name', self.gf('django.db.models.fields.CharField')(unique=True, max_length=255)),
-            ('enabled', self.gf('django.db.models.fields.BooleanField')(default=False)),
-            ('subject_template', self.gf('django.db.models.fields.TextField')(null=True, blank=True)),
-            ('body_html_template', self.gf('django.db.models.fields.TextField')(null=True, blank=True)),
-        ))
-        db.send_create_signal('drip', ['Drip'])
+        # Adding field 'Drip.from_email'
+        db.add_column('drip_drip', 'from_email',
+                      self.gf('django.db.models.fields.EmailField')(max_length=75, null=True, blank=True),
+                      keep_default=False)
 
-        # Adding model 'SentDrip'
-        db.create_table('drip_sentdrip', (
-            ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
-            ('date', self.gf('django.db.models.fields.DateTimeField')(auto_now_add=True, blank=True)),
-            ('drip', self.gf('django.db.models.fields.related.ForeignKey')(related_name='sent_drips', to=orm['drip.Drip'])),
-            ('user', self.gf('django.db.models.fields.related.ForeignKey')(related_name='sent_drips', to=orm['auth.User'])),
-            ('subject', self.gf('django.db.models.fields.TextField')()),
-            ('body', self.gf('django.db.models.fields.TextField')()),
-        ))
-        db.send_create_signal('drip', ['SentDrip'])
+        # Adding field 'Drip.from_email_name'
+        db.add_column('drip_drip', 'from_email_name',
+                      self.gf('django.db.models.fields.CharField')(max_length=150, null=True, blank=True),
+                      keep_default=False)
 
-        # Adding model 'QuerySetRule'
-        db.create_table('drip_querysetrule', (
-            ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
-            ('date', self.gf('django.db.models.fields.DateTimeField')(auto_now_add=True, blank=True)),
-            ('lastchanged', self.gf('django.db.models.fields.DateTimeField')(auto_now=True, blank=True)),
-            ('drip', self.gf('django.db.models.fields.related.ForeignKey')(related_name='queryset_rules', to=orm['drip.Drip'])),
-            ('method_type', self.gf('django.db.models.fields.CharField')(default='filter', max_length=12)),
-            ('field_name', self.gf('django.db.models.fields.CharField')(max_length=128)),
-            ('lookup_type', self.gf('django.db.models.fields.CharField')(default='exact', max_length=12)),
-            ('field_value', self.gf('django.db.models.fields.CharField')(max_length=255)),
-        ))
-        db.send_create_signal('drip', ['QuerySetRule'])
+        # Adding field 'SentDrip.from_email'
+        db.add_column('drip_sentdrip', 'from_email',
+                      self.gf('django.db.models.fields.EmailField')(default=None, max_length=75, null=True),
+                      keep_default=False)
+
+        # Adding field 'SentDrip.from_email_name'
+        db.add_column('drip_sentdrip', 'from_email_name',
+                      self.gf('django.db.models.fields.CharField')(default=None, max_length=150, null=True),
+                      keep_default=False)
 
 
     def backwards(self, orm):
-        # Deleting model 'Drip'
-        db.delete_table('drip_drip')
+        # Deleting field 'Drip.from_email'
+        db.delete_column('drip_drip', 'from_email')
 
-        # Deleting model 'SentDrip'
-        db.delete_table('drip_sentdrip')
+        # Deleting field 'Drip.from_email_name'
+        db.delete_column('drip_drip', 'from_email_name')
 
-        # Deleting model 'QuerySetRule'
-        db.delete_table('drip_querysetrule')
+        # Deleting field 'SentDrip.from_email'
+        db.delete_column('drip_sentdrip', 'from_email')
+
+        # Deleting field 'SentDrip.from_email_name'
+        db.delete_column('drip_sentdrip', 'from_email_name')
 
 
     models = {
@@ -98,6 +85,8 @@ class Migration(SchemaMigration):
             'body_html_template': ('django.db.models.fields.TextField', [], {'null': 'True', 'blank': 'True'}),
             'date': ('django.db.models.fields.DateTimeField', [], {'auto_now_add': 'True', 'blank': 'True'}),
             'enabled': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
+            'from_email': ('django.db.models.fields.EmailField', [], {'max_length': '75', 'null': 'True', 'blank': 'True'}),
+            'from_email_name': ('django.db.models.fields.CharField', [], {'max_length': '150', 'null': 'True', 'blank': 'True'}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'lastchanged': ('django.db.models.fields.DateTimeField', [], {'auto_now': 'True', 'blank': 'True'}),
             'name': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '255'}),
@@ -119,6 +108,8 @@ class Migration(SchemaMigration):
             'body': ('django.db.models.fields.TextField', [], {}),
             'date': ('django.db.models.fields.DateTimeField', [], {'auto_now_add': 'True', 'blank': 'True'}),
             'drip': ('django.db.models.fields.related.ForeignKey', [], {'related_name': "'sent_drips'", 'to': "orm['drip.Drip']"}),
+            'from_email': ('django.db.models.fields.EmailField', [], {'default': 'None', 'max_length': '75', 'null': 'True'}),
+            'from_email_name': ('django.db.models.fields.CharField', [], {'default': 'None', 'max_length': '150', 'null': 'True'}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'subject': ('django.db.models.fields.TextField', [], {}),
             'user': ('django.db.models.fields.related.ForeignKey', [], {'related_name': "'sent_drips'", 'to': "orm['auth.User']"})
