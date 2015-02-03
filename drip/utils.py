@@ -1,5 +1,20 @@
+import sys
+
+from django.db import models
 from django.db.models import ForeignKey, OneToOneField, ManyToManyField
 from django.db.models.related import RelatedObject
+
+# taking a nod from python-requests and skipping six
+_ver = sys.version_info
+is_py2 = (_ver[0] == 2)
+is_py3 = (_ver[0] == 3)
+
+if is_py2:
+    basestring = basestring
+    unicode = unicode
+elif is_py3:
+    basestring = (str, bytes)
+    unicode = str
 
 
 def get_fields(Model, 
@@ -20,6 +35,11 @@ def get_fields(Model,
 
     if model_stack is None:
         model_stack = []
+
+    # github.com/omab/python-social-auth/commit/d8637cec02422374e4102231488481170dc51057
+    if isinstance(Model, basestring):
+        app_label, model_name = Model.split('.')
+        Model = models.get_model(app_label, model_name)
 
     fields = Model._meta.fields + Model._meta.many_to_many + Model._meta.get_all_related_objects()
     model_stack.append(Model)
@@ -93,3 +113,11 @@ def give_model_field(full_field, Model):
 def get_simple_fields(Model, **kwargs):
     return [[f[0], f[3].__name__] for f in get_fields(Model, **kwargs)]
 
+def get_user_model():
+    # handle 1.7 and back
+    try:
+        from django.contrib.auth import get_user_model as django_get_user_model
+        User = django_get_user_model()
+    except ImportError:
+        from django.contrib.auth.models import User
+    return User
